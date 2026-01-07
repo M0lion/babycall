@@ -1,0 +1,19 @@
+# ESP-IDF build output
+build/
+sdkconfig.old
+dependencies.lock
+
+# Python virtual environment (if using idf.py)
+.venv/
+venv/
+
+# Eclipse project files
+.cproject
+.project
+.settings/
+
+# Visual Studio Code
+.vscode/
+
+# ccls
+.ccls-cache/
