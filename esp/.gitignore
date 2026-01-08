@@ -2,6 +2,8 @@
 build/
 sdkconfig.old
 dependencies.lock
+managed_components
+.cache
 
 # Python virtual environment (if using idf.py)
 .venv/
