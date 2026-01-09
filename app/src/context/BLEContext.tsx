@@ -5,6 +5,7 @@ import BLEService from '../services/BLEService';
 import AudioService from '../services/AudioService';
 import AudioProtocol, { AudioProtocolStats } from '../services/AudioProtocol';
 import { DeviceInfo, AudioConfig, ControlCommand } from '../types/ble.types';
+import { AudioSettings, DEFAULT_AUDIO_CONFIG, validateAudioSettings } from '../config';
 
 /**
  * BLE Connection State
@@ -18,6 +19,9 @@ interface BLEContextState {
 	temperature: number | null;
 	led: boolean;
 
+	// Audio configuration
+	audioSettings: AudioSettings;
+
 	// Methods
 	requestPermissions: () => Promise<boolean>;
 	startScan: (onDeviceFound: (device: Device) => void) => Promise<void>;
@@ -25,6 +29,7 @@ interface BLEContextState {
 	connectToDevice: (device: Device) => Promise<void>;
 	disconnect: () => Promise<void>;
 	toggleLed: () => Promise<void>;
+	updateAudioSettings: (settings: Partial<AudioSettings>) => void;
 }
 
 const BLEContext = createContext<BLEContextState | undefined>(undefined);
@@ -40,6 +45,7 @@ export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 	const [temperature, setTemperature] = useState<number | null>(null);
 	const [led, setLed] = useState(false);
 	const [audioConfig, setAudioConfig] = useState<AudioConfig | null>(null);
+	const [audioSettings, setAudioSettings] = useState<AudioSettings>(DEFAULT_AUDIO_CONFIG);
 	const [audioStats, setAudioStats] = useState({
 		framesReceived: 0,
 		packetLossRate: 0,
@@ -173,14 +179,14 @@ export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
 			setTemperature(temperature);
 
-			AudioService.init();
+			AudioService.init(audioSettings);
 
 			Alert.alert('Connected', `Connected to ${device.name || device.id}`);
 		} catch (error) {
 			Alert.alert('Connection Error', `Failed to connect to device: ${error}`);
 			handleDisconnect();
 		}
-	}, [stopScan]);
+	}, [stopScan, audioSettings]);
 
 	/**
 	 * Disconnect from device
@@ -229,9 +235,11 @@ export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 				const newLed = !prevLed;
 				console.log(`Led is ${prevLed} setting to ${newLed}`);
 				BLEService.setLED(newLed);  // Note: fire-and-forget or handle separately
+				if (newLed) {
+					startStreaming();
+				} else { stopStreaming(); }
 				return newLed;
 			});
-			startStreaming();
 		} catch (error) {
 			Alert.alert('Streaming Error', `Failed to start streaming: ${error}`);
 		}
@@ -267,6 +275,55 @@ export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 		}
 	}, [isConnected]);
 
+	const stopStreaming = useCallback(async (): Promise<void> => {
+		if (!isConnected) {
+			Alert.alert('Not Connected', 'Please connect to a device first.');
+			return;
+		}
+
+		try {
+			// Reset protocol and audio service
+			AudioProtocol.reset();
+			AudioService.stop();
+
+			// Start monitoring audio data
+			await BLEService.stopAudioStream();
+
+			setIsStreaming(false);
+			console.log('[BLEContext] Audio streaming stopped');
+		} catch (error) {
+			Alert.alert('Streaming Error', `Failed to start streaming: ${error}`);
+			setIsStreaming(false);
+		}
+	}, [isConnected]);
+
+	/**
+	 * Update audio settings and reinitialize AudioService if needed
+	 */
+	const updateAudioSettings = useCallback(
+		(settings: Partial<AudioSettings>) => {
+			// Validate settings
+			if (!validateAudioSettings(settings)) {
+				Alert.alert('Invalid Audio Settings', 'The provided audio settings are invalid.');
+				return;
+			}
+
+			// Merge with current settings
+			const newSettings = { ...audioSettings, ...settings };
+			setAudioSettings(newSettings);
+
+			// If we're connected and streaming, reinitialize AudioService
+			if (isConnected && isStreaming) {
+				try {
+					AudioService.reinitialize(newSettings);
+					console.log('[BLEContext] Audio settings updated:', newSettings);
+				} catch (error) {
+					Alert.alert('Audio Error', `Failed to update audio settings: ${error}`);
+				}
+			}
+		},
+		[audioSettings, isConnected, isStreaming]
+	);
 
 	const value: BLEContextState = {
 		isConnected,
@@ -274,12 +331,14 @@ export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 		isScanning,
 		led,
 		temperature,
+		audioSettings,
 		requestPermissions,
 		startScan,
 		stopScan,
 		connectToDevice,
 		disconnect,
 		toggleLed,
+		updateAudioSettings,
 	};
 
 	return <BLEContext.Provider value={value}>{children}</BLEContext.Provider>;

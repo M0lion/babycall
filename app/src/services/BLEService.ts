@@ -338,6 +338,9 @@ class BLEService {
 		}
 	}
 
+	async stopAudioStream() {
+		this.audioSubscription?.remove();
+	}
 
 	/**
 	 * Setup monitoring for device disconnection

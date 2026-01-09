@@ -10,6 +10,7 @@ import {
 	GainNode,
 	AudioBufferSourceNode,
 } from 'react-native-audio-api';
+import { DEFAULT_AUDIO_CONFIG, AudioSettings } from '../config';
 
 export interface AudioStats {
 	framesPlayed: number;
@@ -21,7 +22,7 @@ export interface AudioStats {
 export class AudioService {
 	private context: AudioContext | null = null;
 	private gainNode: GainNode | null = null;
-	private sampleRate: number = 8000;
+	private currentConfig: AudioSettings = DEFAULT_AUDIO_CONFIG;
 	private nextPlayTime: number = 0;
 	private isInitialized: boolean = false;
 	private playing: boolean = false;
@@ -31,28 +32,34 @@ export class AudioService {
 		framesPlayed: 0,
 		underruns: 0,
 		bufferHealth: 0,
-		sampleRate: 16000,
+		sampleRate: DEFAULT_AUDIO_CONFIG.sampleRate,
 	};
 
 	/**
-	 * Initialize the audio context and gain node
-	 * @param sampleRate Sample rate in Hz (default: 16000)
+	 * Initialize the audio context with configuration
+	 * @param config Partial audio settings to override defaults
 	 */
-	init(sampleRate: number = 16000): void {
+	init(config?: Partial<AudioSettings>): void {
 		try {
 			if (this.isInitialized) {
-				console.warn('[AudioService] Already initialized');
-				return;
+				console.warn('[AudioService] Already initialized, reinitializing...');
+				this.dispose();
 			}
 
-			this.sampleRate = sampleRate;
-			this.stats.sampleRate = sampleRate;
+			// Merge with defaults
+			this.currentConfig = {
+				...DEFAULT_AUDIO_CONFIG,
+				...config,
+			};
+
+			this.stats.sampleRate = this.currentConfig.sampleRate;
 
 			// Create audio context with specified sample rate
-			this.context = new AudioContext({ sampleRate });
+			this.context = new AudioContext({ sampleRate: this.currentConfig.sampleRate });
 
 			// Create gain node for volume control
 			this.gainNode = this.context.createGain();
+			this.gainNode.gain.value = this.currentConfig.gain || 1.0;
 			this.gainNode.connect(this.context.destination);
 
 			// Resume context if suspended
@@ -66,11 +73,20 @@ export class AudioService {
 			this.playing = false;
 			this.nextPlayTime = 0;
 
-			console.log('[AudioService] Initialized with sample rate:', sampleRate);
+			console.log('[AudioService] Initialized with config:', this.currentConfig);
 		} catch (error) {
 			console.error('[AudioService] Initialization failed:', error);
 			throw new Error(`Failed to initialize AudioService: ${error}`);
 		}
+	}
+
+	/**
+	 * Reinitialize with new configuration (for runtime changes)
+	 * @param config New audio settings
+	 */
+	reinitialize(config: Partial<AudioSettings>): void {
+		console.log('[AudioService] Reinitializing with new config:', config);
+		this.init(config);
 	}
 
 	/**
@@ -101,7 +117,7 @@ export class AudioService {
 			const buffer = this.context.createBuffer(
 				1, // Mono
 				float32.length,
-				this.sampleRate
+				this.currentConfig.sampleRate
 			);
 
 			// Copy data to buffer
@@ -212,6 +228,14 @@ export class AudioService {
 			...this.stats,
 			bufferHealth: this.getBufferHealth(),
 		};
+	}
+
+	/**
+	 * Get current audio configuration
+	 * @returns Current AudioSettings
+	 */
+	getConfig(): AudioSettings {
+		return { ...this.currentConfig };
 	}
 
 	/**
