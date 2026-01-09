@@ -304,6 +304,41 @@ class BLEService {
 		);
 	}
 
+	async startAudioStream(onAudioData: (data: Uint8Array) => void): Promise<void> {
+		if (!this.connectedDevice) {
+			throw new Error('No device connected');
+		}
+
+		try {
+			console.log('[BLEService] Starting audio stream');
+
+			// Monitor the audio data characteristic
+			this.audioSubscription = this.connectedDevice.monitorCharacteristicForService(
+				BLE_UUIDS.SERVICE,
+				BLE_UUIDS.AUDIO_DATA,
+				(error, characteristic) => {
+					if (error) {
+						console.error('[BLEService] Audio data error:', error);
+						return;
+					}
+
+					if (characteristic?.value) {
+						// Convert base64 to Uint8Array
+						const audioData = this.base64ToUint8Array(characteristic.value);
+						console.log('[BLEService] Audio data received:', audioData.length, 'bytes');
+						onAudioData(audioData);
+					}
+				}
+			);
+
+			console.log('[BLEService] Audio stream started');
+		} catch (error) {
+			console.error('[BLEService] Failed to start audio stream:', error);
+			throw new Error(`Failed to start audio stream: ${error}`);
+		}
+	}
+
+
 	/**
 	 * Setup monitoring for device disconnection
 	 * @private

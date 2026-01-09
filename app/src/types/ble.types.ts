@@ -38,6 +38,7 @@ export const BLE_UUIDS = {
 	// Characteristic UUIDs  
 	TEMPERATURE: '0100bc9a-7856-3412-f0de-bc9a78563412',  // Read + Notify
 	LED: '0200bc9a-7856-3412-f0de-bc9a78563412',          // Read + Write
+	AUDIO_DATA: '0300bc9a-7856-3412-f0de-bc9a78563412',   // Notify
 };
 
 /**

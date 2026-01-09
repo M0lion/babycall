@@ -172,6 +172,9 @@ export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 			const temperature = await BLEService.readTemperature();
 
 			setTemperature(temperature);
+
+			AudioService.init();
+
 			Alert.alert('Connected', `Connected to ${device.name || device.id}`);
 		} catch (error) {
 			Alert.alert('Connection Error', `Failed to connect to device: ${error}`);
@@ -228,11 +231,42 @@ export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 				BLEService.setLED(newLed);  // Note: fire-and-forget or handle separately
 				return newLed;
 			});
+			startStreaming();
+		} catch (error) {
+			Alert.alert('Streaming Error', `Failed to start streaming: ${error}`);
+		}
+	}, [isConnected]);
+
+	const startStreaming = useCallback(async (): Promise<void> => {
+		if (!isConnected) {
+			Alert.alert('Not Connected', 'Please connect to a device first.');
+			return;
+		}
+
+		try {
+			// Reset protocol and audio service
+			AudioProtocol.reset();
+			AudioService.stop();
+
+			// Start monitoring audio data
+			await BLEService.startAudioStream((data: Uint8Array) => {
+				// Process incoming data through protocol
+				const frame = AudioProtocol.processIncomingData(data);
+
+				if (frame) {
+					// Play the audio frame
+					AudioService.playPCMFrame(frame);
+				}
+			});
+
+			setIsStreaming(true);
+			console.log('[BLEContext] Audio streaming started');
 		} catch (error) {
 			Alert.alert('Streaming Error', `Failed to start streaming: ${error}`);
 			setIsStreaming(false);
 		}
 	}, [isConnected]);
+
 
 	const value: BLEContextState = {
 		isConnected,

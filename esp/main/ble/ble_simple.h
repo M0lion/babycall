@@ -79,6 +79,10 @@ esp_err_t ble_simple_notify(ble_char_handle_t handle, const uint8_t *data,
  */
 bool ble_simple_is_connected(void);
 
+unsigned int ble_simple_get_mtu(void);
+
+bool ble_simple_is_notify_enabled(ble_char_handle_t handle);
+
 /**
  * Deinitialize BLE
  */

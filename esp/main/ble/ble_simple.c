@@ -1,10 +1,13 @@
 #include "ble_simple.h"
 #include "esp_bt.h"
 #include "esp_bt_main.h"
+#include "esp_err.h"
 #include "esp_gap_ble_api.h"
 #include "esp_gatt_common_api.h"
+#include "esp_gatt_defs.h"
 #include "esp_gatts_api.h"
 #include "esp_log.h"
+#include "esp_log_level.h"
 #include <string.h>
 
 static const char *TAG = "ble_simple";
@@ -48,6 +51,10 @@ static struct {
   int char_count;
 
   int current_service_setup; // Track which service we're setting up
+
+  unsigned short mtu;
+
+  volatile bool s_can_send;
 } state = {0};
 
 // Advertising data
@@ -157,7 +164,7 @@ static void create_service_attrs(int service_idx) {
 
   // Primary service declaration
   static const uint16_t primary_service_uuid = ESP_GATT_UUID_PRI_SERVICE;
-  attr_db[idx].attr_control.auto_rsp = ESP_GATT_AUTO_RSP;
+  attr_db[idx].attr_control.auto_rsp = ESP_GATT_RSP_BY_APP;
   attr_db[idx].att_desc.uuid_length = sizeof(uint16_t);
   attr_db[idx].att_desc.uuid_p = (uint8_t *)&primary_service_uuid;
   attr_db[idx].att_desc.perm = ESP_GATT_PERM_READ;
@@ -206,6 +213,8 @@ static void create_service_attrs(int service_idx) {
       perm |= ESP_GATT_PERM_READ;
     if (chr->on_write)
       perm |= ESP_GATT_PERM_WRITE;
+    if (chr->notifications || chr->indicate)
+      perm |= ESP_GATT_PERM_READ;
 
     attr_db[idx].attr_control.auto_rsp =
         ESP_GATT_RSP_BY_APP; // We handle responses
@@ -245,6 +254,11 @@ static void gatts_event_handler(esp_gatts_cb_event_t event,
                                 esp_gatt_if_t gatts_if,
                                 esp_ble_gatts_cb_param_t *param) {
   switch (event) {
+  case ESP_GATTS_CONF_EVT:
+    // Notification was delivered, ready to send more
+    ESP_LOGI(TAG, "GATTS_CONF_EVENT");
+    state.s_can_send = true;
+    break;
   case ESP_GATTS_REG_EVT:
     if (param->reg.status == ESP_GATT_OK) {
       state.gatts_if = gatts_if;
@@ -403,6 +417,7 @@ static void gatts_event_handler(esp_gatts_cb_event_t event,
   }
 
   case ESP_GATTS_MTU_EVT:
+    state.mtu = param->mtu.mtu;
     ESP_LOGI(TAG, "MTU updated to %d", param->mtu.mtu);
     break;
 
@@ -424,6 +439,8 @@ esp_err_t ble_simple_init(const ble_simple_config_t *config) {
   strncpy(state.device_name, config->device_name,
           sizeof(state.device_name) - 1);
   state.on_connect = config->on_connect;
+
+  state.s_can_send = true;
 
   // Release classic BT memory
   ESP_ERROR_CHECK(esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT));
@@ -469,7 +486,8 @@ esp_err_t ble_simple_init(const ble_simple_config_t *config) {
   }
 
   // Set MTU
-  esp_ble_gatt_set_local_mtu(517);
+  state.mtu = 517;
+  esp_ble_gatt_set_local_mtu(state.mtu);
 
   state.initialized = true;
   ESP_LOGI(TAG, "BLE stack initialized: %s", state.device_name);
@@ -581,13 +599,43 @@ esp_err_t ble_simple_notify(ble_char_handle_t handle, const uint8_t *data,
     return ESP_ERR_INVALID_STATE;
   }
 
+  // Wait for previous notification to complete (with timeout)
+  int timeout = 500; // 50ms max wait
+  while (!state.s_can_send && timeout > 0) {
+    vTaskDelay(pdMS_TO_TICKS(1));
+    timeout--;
+  }
+
+  if (!state.s_can_send) {
+    ESP_LOGW(TAG, "Dropping audio packet");
+    return ESP_OK;
+  }
+
+  state.s_can_send = false; // Will Be set true by ESP_GATTS_CONF_EVT
+
   bool need_confirm = chr->indicate;
-  return esp_ble_gatts_send_indicate(state.gatts_if, state.conn_id,
-                                     chr->attr_handle, len, (uint8_t *)data,
-                                     need_confirm);
+  esp_err_t ret = esp_ble_gatts_send_indicate(state.gatts_if, state.conn_id,
+                                              chr->attr_handle, len,
+                                              (uint8_t *)data, need_confirm);
+
+  if (ret != ESP_OK) {
+    // Send failed, no CONF_EVT coming, so reset flag
+    state.s_can_send = true;
+  }
+
+  return ret;
 }
 
 bool ble_simple_is_connected(void) { return state.connected; }
+
+unsigned int ble_simple_get_mtu(void) { return state.mtu; }
+
+bool ble_simple_is_notify_enabled(ble_char_handle_t handle) {
+  if (!handle)
+    return false;
+  ble_char_t *chr = (ble_char_t *)handle;
+  return chr->notify_enabled;
+}
 
 esp_err_t ble_simple_deinit(void) {
   if (!state.initialized) {

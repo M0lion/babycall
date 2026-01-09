@@ -10,9 +10,10 @@
 #ifndef AUDIO_STREAMER_H
 #define AUDIO_STREAMER_H
 
+#include "ble/ble_simple.h"
 #include "esp_err.h"
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -25,14 +26,14 @@ extern "C" {
  * operation. Statistics are reset when streaming starts.
  */
 typedef struct {
-    uint64_t frames_sent;           // Total number of audio frames sent
-    uint64_t bytes_sent;            // Total number of bytes sent (including headers)
-    uint64_t packets_sent;          // Total number of BLE packets sent
-    uint64_t fragments_sent;        // Total number of fragments sent
-    uint32_t errors;                // Number of errors encountered
-    uint32_t frames_dropped;        // Number of frames dropped (BLE not ready)
-    uint32_t uptime_seconds;        // Seconds since streaming started
-    bool is_streaming;              // Current streaming state
+  uint64_t frames_sent;    // Total number of audio frames sent
+  uint64_t bytes_sent;     // Total number of bytes sent (including headers)
+  uint64_t packets_sent;   // Total number of BLE packets sent
+  uint64_t fragments_sent; // Total number of fragments sent
+  uint32_t errors;         // Number of errors encountered
+  uint32_t frames_dropped; // Number of frames dropped (BLE not ready)
+  uint32_t uptime_seconds; // Seconds since streaming started
+  bool is_streaming;       // Current streaming state
 } audio_streamer_stats_t;
 
 /**
@@ -48,7 +49,7 @@ typedef struct {
  *   - ESP_ERR_NO_MEM if allocation fails
  *   - Other ESP_ERR_* codes from I2S initialization
  */
-esp_err_t audio_streamer_init(void);
+esp_err_t audio_streamer_init(ble_char_handle_t audio_data_handle);
 
 /**
  * @brief Start the audio streaming task

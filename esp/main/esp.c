@@ -14,6 +14,7 @@
  * @version 1.0.0
  */
 
+#include "audio_streamer.h"
 #include "esp_log.h"
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
@@ -21,6 +22,8 @@
 #include "led_strip.h"
 #include "nvs_flash.h"
 #include <stdio.h>
+#include <string.h>
+#include <time.h>
 
 #include "ble/ble_simple.h"
 
@@ -86,6 +89,10 @@ static const uint8_t LED_UUID[16] = {0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC,
                                      0xDE, 0xF0, 0x12, 0x34, 0x56, 0x78,
                                      0x9A, 0xBC, 0x00, 0x02};
 
+static const uint8_t AUDIO_DATA_UUID[16] = {0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC,
+                                            0xDE, 0xF0, 0x12, 0x34, 0x56, 0x78,
+                                            0x9A, 0xBC, 0x00, 0x03};
+
 // Handle for sending notifications
 static ble_char_handle_t temp_handle;
 
@@ -149,6 +156,11 @@ static void on_connection_change(bool connected) {
            connected ? "CONNECTED" : "DISCONNECTED");
 }
 
+static void on_audio_read(ble_char_handle_t handle, uint8_t *out_data,
+                          uint16_t *out_len) {
+  *out_len = 0;
+}
+
 /**
  * @brief Main application entry point
  *
@@ -179,9 +191,11 @@ void app_main(void) {
   ESP_ERROR_CHECK(ble_simple_add_service(SERVICE_UUID, &service_idx));
 
   // Temperature: readable + notifications
-  ble_char_config_t temp_config = {.on_read = on_temp_read,
-                                   .on_write = NULL, // Not writable
-                                   .notifications = true};
+  ble_char_config_t temp_config = {
+      .on_read = on_temp_read,
+      .on_write = NULL, // Not writable
+      .notifications = true,
+  };
   memcpy(temp_config.uuid, TEMP_UUID, 16);
   ESP_ERROR_CHECK(
       ble_simple_add_characteristic(service_idx, &temp_config, &temp_handle));
@@ -192,6 +206,20 @@ void app_main(void) {
   memcpy(led_config.uuid, LED_UUID, 16);
   ESP_ERROR_CHECK(
       ble_simple_add_characteristic(service_idx, &led_config, NULL));
+
+  // Audio data
+  ble_char_config_t audio_data_config = {
+      .on_read = on_audio_read,
+      .on_write = NULL,
+      .notifications = true,
+  };
+  memcpy(audio_data_config.uuid, AUDIO_DATA_UUID, 16);
+  ble_char_handle_t audio_data_handle;
+  ESP_ERROR_CHECK(ble_simple_add_characteristic(service_idx, &audio_data_config,
+                                                &audio_data_handle));
+
+  ESP_ERROR_CHECK(audio_streamer_init(audio_data_handle));
+  ESP_ERROR_CHECK(audio_streamer_start());
 
   // 4. Start advertising
   ESP_ERROR_CHECK(ble_simple_start_advertising());
