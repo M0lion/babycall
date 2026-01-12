@@ -198,6 +198,10 @@ static void audio_streaming_task(void *arg) {
       continue;
     }
 
+    for (int i = 0; i < samples_read; i++) {
+      audio_buffer[i] *= 4;
+    }
+
     // Send audio frame via BLE
     size_t bytes_read = samples_read * sizeof(int16_t);
     ret = send_audio_frame((uint8_t *)audio_buffer, bytes_read);
