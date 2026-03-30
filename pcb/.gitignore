@@ -1,0 +1,13 @@
+babycall-pcb-backups
+fabrication
+jlcpcb
+
+# KiCad autosave/lock files
+\#auto_saved_files#
+_autosave-*
+*.lck
+~*.lck
+
+# KiCad generated files
+fp-info-cache
+*.gbrjob
