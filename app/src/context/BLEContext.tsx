@@ -3,8 +3,7 @@ import { Device } from 'react-native-ble-plx';
 import { Alert } from 'react-native';
 import BLEService from '../services/BLEService';
 import AudioService from '../services/AudioService';
-import AudioProtocol, { AudioProtocolStats } from '../services/AudioProtocol';
-import { DeviceInfo, AudioConfig, ControlCommand } from '../types/ble.types';
+import AudioProtocol from '../services/AudioProtocol';
 import { AudioSettings, DEFAULT_AUDIO_CONFIG, validateAudioSettings } from '../config';
 
 /**
@@ -44,15 +43,7 @@ export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 	const [isStreaming, setIsStreaming] = useState(false);
 	const [temperature, setTemperature] = useState<number | null>(null);
 	const [led, setLed] = useState(false);
-	const [audioConfig, setAudioConfig] = useState<AudioConfig | null>(null);
 	const [audioSettings, setAudioSettings] = useState<AudioSettings>(DEFAULT_AUDIO_CONFIG);
-	const [audioStats, setAudioStats] = useState({
-		framesReceived: 0,
-		packetLossRate: 0,
-		bufferHealth: 0,
-		batteryLevel: 0,
-		uptime: 0,
-	});
 
 	// Initialize BLE Service on mount
 	useEffect(() => {
@@ -72,27 +63,6 @@ export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 			AudioService.dispose();
 		};
 	}, []);
-
-	// Update stats periodically when streaming
-	useEffect(() => {
-		if (!isStreaming) {
-			return;
-		}
-
-		const interval = setInterval(() => {
-			const protocolStats = AudioProtocol.getStats();
-			const audioServiceStats = AudioService.getStats();
-
-			setAudioStats((prev) => ({
-				...prev,
-				framesReceived: protocolStats.totalFrames,
-				packetLossRate: protocolStats.packetLossRate,
-				bufferHealth: audioServiceStats.bufferHealth,
-			}));
-		}, 500); // Update every 500ms
-
-		return () => clearInterval(interval);
-	}, [isStreaming]);
 
 	// Refresh device info periodically when connected
 	useEffect(() => {
@@ -209,14 +179,6 @@ export const BLEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 		setConnectedDevice(null);
 		setIsStreaming(false);
 		setTemperature(null);
-		setAudioConfig(null);
-		setAudioStats({
-			framesReceived: 0,
-			packetLossRate: 0,
-			bufferHealth: 0,
-			batteryLevel: 0,
-			uptime: 0,
-		});
 		AudioService.stop();
 		AudioProtocol.reset();
 	}, []);

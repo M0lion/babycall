@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React from 'react';
 import {
 	StyleSheet,
 	View,
 	ScrollView,
 	TouchableOpacity,
-	Animated,
 } from 'react-native';
-import Slider from '@react-native-community/slider';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
@@ -30,28 +28,9 @@ export default function MonitorScreen() {
 		toggleLed,
 	} = useBLE();
 
-	const [volume, setVolumeState] = useState(0.8);
-	const audioLevelAnim = useRef(new Animated.Value(0)).current;
-
 	// Handle disconnect
 	const handleDisconnect = async () => {
 		await disconnect();
-	};
-
-	// Format uptime
-	const formatUptime = (seconds: number): string => {
-		const hours = Math.floor(seconds / 3600);
-		const minutes = Math.floor((seconds % 3600) / 60);
-		const secs = seconds % 60;
-		return `${hours}h ${minutes}m ${secs}s`;
-	};
-
-	// Get firmware version string
-	const getFirmwareVersion = (version: number): string => {
-		const major = (version >> 16) & 0xff;
-		const minor = (version >> 8) & 0xff;
-		const patch = version & 0xff;
-		return `v${major}.${minor}.${patch}`;
 	};
 
 	// Not connected state
@@ -185,9 +164,6 @@ const styles = StyleSheet.create({
 	title: {
 		marginBottom: 8,
 	},
-	subtitle: {
-		opacity: 0.7,
-	},
 	card: {
 		padding: 20,
 		borderRadius: 12,
@@ -222,23 +198,6 @@ const styles = StyleSheet.create({
 		fontSize: 12,
 		opacity: 0.6,
 	},
-	audioVisualizerContainer: {
-		gap: 12,
-	},
-	audioLevelBarBackground: {
-		height: 40,
-		borderRadius: 8,
-		overflow: 'hidden',
-	},
-	audioLevelBar: {
-		height: '100%',
-		borderRadius: 8,
-	},
-	audioLevelText: {
-		textAlign: 'center',
-		fontSize: 14,
-		opacity: 0.7,
-	},
 	streamButton: {
 		flexDirection: 'row',
 		alignItems: 'center',
@@ -255,41 +214,6 @@ const styles = StyleSheet.create({
 		color: '#fff',
 		fontWeight: '600',
 		fontSize: 16,
-	},
-	volumeControl: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: 12,
-		marginBottom: 8,
-	},
-	volumeSlider: {
-		flex: 1,
-		height: 40,
-	},
-	volumeText: {
-		textAlign: 'center',
-		fontSize: 14,
-		opacity: 0.7,
-	},
-	statsGrid: {
-		flexDirection: 'row',
-		flexWrap: 'wrap',
-		gap: 16,
-	},
-	statItem: {
-		flex: 1,
-		minWidth: '45%',
-	},
-	statLabel: {
-		fontSize: 12,
-		opacity: 0.6,
-		marginBottom: 4,
-	},
-	statValue: {
-		fontSize: 18,
-	},
-	refreshButton: {
-		padding: 4,
 	},
 	disconnectButton: {
 		flexDirection: 'row',

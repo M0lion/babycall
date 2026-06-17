@@ -21,9 +21,7 @@
 #include "freertos/task.h"
 #include "led_strip.h"
 #include "nvs_flash.h"
-#include <stdio.h>
 #include <string.h>
-#include <time.h>
 
 #include "ble/ble_simple.h"
 

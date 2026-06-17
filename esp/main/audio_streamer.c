@@ -19,7 +19,6 @@ static const char *TAG = "AUDIO_STREAMER";
 // Configuration constants
 #define SAMPLE_RATE_HZ 8000
 #define SAMPLES_PER_READ 128
-#define BYTES_PER_READ (SAMPLES_PER_READ * sizeof(int16_t)) // 256 bytes
 #define I2S_READ_TIMEOUT_MS 100
 #define TASK_PRIORITY 5
 #define TASK_STACK_SIZE 4096

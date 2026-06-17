@@ -212,14 +212,6 @@ export class AudioService {
 	}
 
 	/**
-	 * Check if audio is currently playing
-	 * @returns True if playing
-	 */
-	isPlaying(): boolean {
-		return this.playing;
-	}
-
-	/**
 	 * Get playback statistics
 	 * @returns AudioStats object
 	 */
@@ -228,14 +220,6 @@ export class AudioService {
 			...this.stats,
 			bufferHealth: this.getBufferHealth(),
 		};
-	}
-
-	/**
-	 * Get current audio configuration
-	 * @returns Current AudioSettings
-	 */
-	getConfig(): AudioSettings {
-		return { ...this.currentConfig };
 	}
 
 	/**
@@ -264,15 +248,6 @@ export class AudioService {
 		}
 	}
 
-	/**
-	 * Reset statistics
-	 */
-	resetStats(): void {
-		this.stats.framesPlayed = 0;
-		this.stats.underruns = 0;
-		this.stats.bufferHealth = 0;
-		console.log('[AudioService] Statistics reset');
-	}
 }
 
 // Export singleton instance

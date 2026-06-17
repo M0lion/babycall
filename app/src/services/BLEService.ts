@@ -229,23 +229,6 @@ class BLEService {
 		}
 	}
 
-
-	/**
-	 * Check if a device is currently connected
-	 * @returns true if connected, false otherwise
-	 */
-	isConnected(): boolean {
-		return this.connectedDevice !== null;
-	}
-
-	/**
-	 * Get the currently connected device
-	 * @returns The connected device or null
-	 */
-	getConnectedDevice(): Device | null {
-		return this.connectedDevice;
-	}
-
 	/**
 	 * Set callback for disconnect events
 	 * @param callback - Function to call when device disconnects

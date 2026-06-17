@@ -275,14 +275,6 @@ export class AudioProtocol {
   }
 
   /**
-   * Get current packet loss rate (0.0 to 1.0)
-   * @returns Packet loss rate as a decimal (e.g., 0.05 = 5%)
-   */
-  getPacketLossRate(): number {
-    return this.stats.packetLossRate;
-  }
-
-  /**
    * Get detailed statistics
    * @returns Current protocol statistics
    */
